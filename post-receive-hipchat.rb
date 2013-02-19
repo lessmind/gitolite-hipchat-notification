@@ -6,27 +6,57 @@ require 'net/https'
 
 CONFIG = YAML::load(File.open(File.join(File.dirname(__FILE__), 'config.yml')))
 
+def set_var varname, args
+  required = args[:required] ||= false
+  default = args[:default] ||= nil
+
+	tmp_value = (%x[git config hooks.#{varname} ]).chomp.strip
+  if tmp_value.to_s == ''
+    varname.gsub!(/hipchat\./, '')
+    if CONFIG[varname]
+      value = CONFIG[varname]
+    else
+      if required && !default
+        $stderr.puts "#{varname} not found - exiting"
+        exit
+      else
+        value = default
+      end
+    end
+  else
+    value = tmp_value
+  end
+  value
+end
+
 def speak(message)
+  auth_token = set_var('hipchat.apitoken', :required => true)
+  room = set_var('hipchat.room', :required => true)
+  notify = set_var('hipchat.notify', :default => 0)
+  from = set_var('hipchat.from', :default => 'Gitolite')
+  proxy_address = set_var('hipchat.proxyaddress')
+  proxy_port = set_var('hipchat.proxyport')
+
   uri = URI.parse("https://api.hipchat.com/")
-  http = Net::HTTP.new(uri.host, uri.port, CONFIG['proxy_address'],
-      CONFIG['proxy_port'])
+  http = Net::HTTP.new(uri.host, uri.port, proxy_address, proxy_port)
   http.use_ssl = true
   http.verify_mode = OpenSSL::SSL::VERIFY_NONE
   request = Net::HTTP::Post.new("/v1/rooms/message")
+
   request.set_form_data({"message" => message,
-      "auth_token" => CONFIG['hipchat_api_token'],
-      "room_id" => CONFIG['hipchat_room'],
-      "notify" => CONFIG['notify'],
-      "from" => CONFIG['from']})
+      "auth_token" => auth_token,
+      "room_id" => room,
+      "notify" => notify,
+      "from" => from })
   response = http.request(request)
 end
 
-repository = CONFIG['repository'] ||= File.basename(Dir.getwd, ".git")
-if CONFIG['gitweb_url']
-  repo_url = "#{CONFIG['gitweb_url']}/#{repository}.git/"
+repository = set_var('repository', :default => File.basename(Dir.getwd, ".git"))
+if set_var('gitweburl')
+  repo_url = "#{set_var('gitweburl')}/#{repository}.git/"
   commit_url = repo_url + "commit/"
-elsif CONFIG['cgit_url']
-  repo_url = "#{CONFIG['cgit_url']}/#{repository}/"
+elsif set_var('cgiturl')
+  repo_url = "#{set_var('cgiturl')}/#{repository}/"
   commit_url = repo_url + "commit/?id="
 else
   repo_url = commit_url = nil
