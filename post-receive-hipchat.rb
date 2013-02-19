@@ -4,9 +4,14 @@ require 'yaml'
 require 'time'
 require 'net/https'
 
-CONFIG = YAML::load(File.open(File.join(File.dirname(__FILE__), 'config.yml')))
+conffile = File.join(File.dirname(__FILE__), 'config.yml')
+if File.exist?(conffile)
+  CONFIG = YAML::load(File.open(conffile))
+else
+  CONFIG = {}
+end
 
-def set_var varname, args
+def set_var varname, args = {}
   required = args[:required] ||= false
   default = args[:default] ||= nil
 
