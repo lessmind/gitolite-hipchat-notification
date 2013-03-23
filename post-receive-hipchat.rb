@@ -34,10 +34,13 @@ def set_var varname, args = {}
   value
 end
 
-def speak(message)
+def speak(message, force_notify = false)
   auth_token = set_var('hipchat.apitoken', :required => true)
   room = set_var('hipchat.room', :required => true)
   notify = set_var('hipchat.notify', :default => 0)
+  if force_notify
+    notify = 1
+  end
   from = set_var('hipchat.from', :default => 'Gitolite')
   proxy_address = set_var('hipchat.proxyaddress')
   proxy_port = set_var('hipchat.proxyport')
@@ -115,7 +118,8 @@ unless commit_changes.empty?
   end
   # check nospeak
   unless set_var('hipchat.nospeak', :default => '0') == '1'
-    speak message
+    # add notify key check
+    speak message, $2.include?(set_var('hipchat.notifykey', :default => '@notify'))
   end
 end
 
