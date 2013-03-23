@@ -3,6 +3,8 @@ room: "<room name or id>"
 notify: 0
 from: "Gitolite"
 # define one of these to include URLs
+# redmineurl: 'http://redmine-url.com'
+# project: 'project' # required if using redmineurl, you can also set it in gitolite.conf
 gitweburl: 'https://my-gitweb-url.com'  # Must use "pretty" paths
 # cgiturl: 'https://my-cgit-url.com'
 # proxyaddress: "1.2.3.4"

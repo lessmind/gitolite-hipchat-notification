@@ -61,7 +61,10 @@ def speak(message)
 end
 
 repository = set_var('repository', :default => File.basename(Dir.getwd, ".git"))
-if set_var('gitweburl')
+if set_var('redmineurl')
+  repo_url = "#{set_var('redmineurl')}/projects/#{set_var('project', :required => true)}/repository/#{repository}/"
+  commit_url = repo_url + 'revisions/'
+elsif set_var('gitweburl')
   repo_url = "#{set_var('gitweburl')}/#{repository}.git/"
   commit_url = repo_url + "commit/"
 elsif set_var('cgiturl')
