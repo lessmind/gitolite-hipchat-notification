@@ -95,6 +95,15 @@ repo testing
 		config hooks.hipchat.repository = some-name-other-than-testing # (optional)
 ```
 
-TO-DO
------
-1. set some keywords in commit message that will notify the hipchat window
+3. notify key
+
+	Set a keyword in your config.yml, so the hipchat room will be notified when your commit message contains the keyword!
+	
+	Example:
+```sh
+# in config.yml
+notifykey: '@NOTE'
+# in commit message
+Update README.md @NOTE
+# make sure the keyword on the first line so it will contains in this command `git log --abbrev-commit --oneline`
+```
