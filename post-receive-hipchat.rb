@@ -35,10 +35,6 @@ def set_var varname, args = {}
 end
 
 def speak(message)
-  # return if nospeak is set
-  if set_var('hipchat.nospeak', {:default => '0', :required => true}) == '1'
-    return
-  end
   auth_token = set_var('hipchat.apitoken', :required => true)
   room = set_var('hipchat.room', :required => true)
   notify = set_var('hipchat.notify', :default => 0)
@@ -117,7 +113,10 @@ unless commit_changes.empty?
       message += " #{$2.split("\n").first}<br/>"
     end
   end
-  speak message
+  # check nospeak
+  unless set_var('hipchat.nospeak', :default => '0') == '1'
+    speak message
+  end
 end
 
 # Call to post-speak hook
