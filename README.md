@@ -56,9 +56,12 @@ Note: Git config variables cannot have an underscore in them so there are some c
 
 New Features
 ------------
-- nospeak config to suppress messages from some repository have to be ignored
+1. nospeak
 
-	Example: <pre>
+	Useful to suppress messages from specify repositories
+
+	Example: 
+```sh
 # In gitolite.conf
 repo testing
 		RW+     =   @all
@@ -74,21 +77,24 @@ repo testing
 		config hooks.hipchat.from = Testing
 		config hooks.hipchat.nospeak = 0
 # actually all values except 1 will make it speak
-</pre>
+```
 
-- redmineurl feature to support view commits in redmine
+2. redmineurl
 
-	Example: <pre>
+	Support for browsing commits in [redmine](http://www.redmine.org/)
+
+	Example: 
+```sh
 # In config.yml
 redmineurl: 'http://redmine-url.com'
 # In gitolite.conf
 repo testing
-	RW+     =   @all
-	config hooks.hipchat.from = Testing
-	config hooks.hipchat.project = your-project
-	config hooks.hipchat.repository = some-name-other-than-testing # (optional)
-</pre>
+		RW+     =   @all
+		config hooks.hipchat.from = Testing
+		config hooks.hipchat.project = your-project
+		config hooks.hipchat.repository = some-name-other-than-testing # (optional)
+```
 
 TO-DO
 -----
-- set some keyword in commit message that will notify the hipchat window
+1. set some keywords in commit message that will notify the hipchat window
