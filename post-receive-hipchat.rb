@@ -116,10 +116,10 @@ unless commit_changes.empty?
       message += " #{$2.split("\n").first}<br/>"
     end
   end
-  # check nospeak
-  unless set_var('hipchat.nospeak', :default => '0') == '1'
+  # check silent
+  unless set_var('hipchat.silent') == '1'
     # add notify key check
-    speak message, $2.include?(set_var('hipchat.notifykey', :default => '@notify'))
+    speak message, (set_var('hipchat.notifykey') && $2.include?(set_var('hipchat.notifykey')))
   end
 end
 

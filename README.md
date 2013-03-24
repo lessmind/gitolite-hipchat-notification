@@ -56,7 +56,7 @@ Note: Git config variables cannot have an underscore in them so there are some c
 
 New Features
 ------------
-1. nospeak
+1. silent
 
 	Useful to suppress messages from specify repositories
 
@@ -66,16 +66,16 @@ New Features
 repo testing
 		RW+     =   @all
 		config hooks.hipchat.from = Testing
-		config hooks.hipchat.nospeak = 1
-# Or set config.yml nospeak as 1, so all repositories won't speak.
+		config hooks.hipchat.silent = 1
+# Or set config.yml silent as 1, so all repositories won't speak.
 # Then turn on speak for the repositoriess you want
 # In config.yml
-nospeak: '1'
+silent: '1'
 # In gitolite.conf
 repo testing
 		RW+     =   @all
 		config hooks.hipchat.from = Testing
-		config hooks.hipchat.nospeak = 0
+		config hooks.hipchat.silent = 0
 # actually all values except 1 will make it speak
 ```
 

@@ -9,5 +9,5 @@ gitweburl: 'https://my-gitweb-url.com'  # Must use "pretty" paths
 # cgiturl: 'https://my-cgit-url.com'
 # proxyaddress: "1.2.3.4"
 # proxyport: 83
-# nospeak: '0'
+silent: '0'
 # notifykey: '@notify'
