@@ -56,7 +56,7 @@ def speak(message, force_notify = false)
       "room_id" => room,
       "notify" => notify,
       "from" => from })
-  response = http.request(request)
+  http.request(request)
 end
 
 repository = set_var('repository', :default => File.basename(Dir.getwd, ".git"))
