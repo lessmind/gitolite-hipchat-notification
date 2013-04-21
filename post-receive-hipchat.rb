@@ -59,14 +59,14 @@ def speak(message, force_notify = false)
   http.request(request)
 end
 
-repository = set_var('repository', :default => File.basename(Dir.getwd, ".git"))
-if set_var('redmineurl')
-  repo_url = "#{set_var('redmineurl')}/projects/#{set_var('project', :required => true)}/repository/#{repository}/"
+repository = set_var('hipchat.repository', :default => File.basename(Dir.getwd, ".git"))
+if set_var('hipchat.redmineurl')
+  repo_url = "#{set_var('hipchat.redmineurl')}/projects/#{set_var('hipchat.project', :required => true)}/repository/#{repository}/"
   commit_url = repo_url + 'revisions/'
-elsif set_var('gitweburl')
-  repo_url = "#{set_var('gitweburl')}/#{repository}.git/"
+elsif set_var('hipchat.gitweburl')
+  repo_url = "#{set_var('hipchat.gitweburl')}/#{repository}.git/"
   commit_url = repo_url + "commit/"
-elsif set_var('cgiturl')
+elsif set_var('hipchat.cgiturl')
   repo_url = "#{set_var('cgiturl')}/#{repository}/"
   commit_url = repo_url + "commit/?id="
 else
