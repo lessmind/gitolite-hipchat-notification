@@ -1,4 +1,4 @@
 #!/usr/bin/env ruby
 
-# Call to post-speak hook
+# Call to speak hook
 load File.join(File.dirname(__FILE__), 'post-receive-hipchat.rb') if File.exist?(File.join(File.dirname(__FILE__), 'post-receive-hipchat.rb'))

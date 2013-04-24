@@ -4,6 +4,7 @@ require 'yaml'
 require 'time'
 require 'net/https'
 
+# load configs from yml
 conffile = File.join(File.dirname(__FILE__), 'config.yml')
 if File.exist?(conffile)
   CONFIG = YAML::load(File.open(conffile))
@@ -11,116 +12,93 @@ else
   CONFIG = {}
 end
 
-def set_var varname, args = {}
+# load configs from git config
+`$(which git) config -l | grep hooks.hipchat | sed 's/^hooks\.hipchat\.//g'`.split("\n").each do |conf|
+  pieces = conf.split('=', 2)
+  CONFIG[pieces[0]] = pieces[1]
+end
+
+# get config value with default/required flags
+def conf name, args = {}
   required = args[:required] ||= false
   default = args[:default] ||= nil
-
-	tmp_value = (%x[git config hooks.#{varname} ]).chomp.strip
-  if tmp_value.to_s == ''
-    varname.gsub!(/hipchat\./, '')
-    if CONFIG[varname]
-      value = CONFIG[varname]
-    else
-      if required && !default
-        $stderr.puts "#{varname} not found - exiting"
-        exit
-      else
-        value = default
-      end
-    end
+  if CONFIG[name]
+    CONFIG[name]
   else
-    value = tmp_value
+    if required && !default
+      $stderr.puts "#{name} not found - exiting"
+      exit
+    else
+      default
+    end
   end
-  value
 end
 
-def speak(message, force_notify = false)
-  auth_token = set_var('hipchat.apitoken', :required => true)
-  room = set_var('hipchat.room', :required => true)
-  notify = set_var('hipchat.notify', :default => 0)
-  if force_notify
-    notify = 1
-  end
-  from = set_var('hipchat.from', :default => 'Gitolite')
-  proxy_address = set_var('hipchat.proxyaddress')
-  proxy_port = set_var('hipchat.proxyport')
-
-  uri = URI.parse("https://api.hipchat.com/")
-  http = Net::HTTP.new(uri.host, uri.port, proxy_address, proxy_port)
+def speak(message)
+  # put message let remote knowing this speak
+  print "Sending commits to hipchat...... "
+  STDOUT.flush
+  # set up http request
+  uri = URI.parse('https://api.hipchat.com/')
+  http = Net::HTTP.new(uri.host, uri.port, conf('proxyaddress'), conf('proxyport'))
   http.use_ssl = true
   http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-  request = Net::HTTP::Post.new("/v1/rooms/message")
 
-  request.set_form_data({"message" => message,
-      "auth_token" => auth_token,
-      "room_id" => room,
-      "notify" => notify,
-      "from" => from })
+  # send request
+  request = Net::HTTP::Post.new('/v1/rooms/message')
+  request.set_form_data({
+    'message' => message,
+    'auth_token' => conf('apitoken', :required => true),
+    'room_id' => conf('room', :required => true),
+    'notify' => conf('notify', :default => 0),
+    'from' => conf('from', :default => 'Gitolite')
+  })
   http.request(request)
+  # put message let remote knowing this speak
+  puts "sent!"
 end
 
-repository = set_var('hipchat.repository', :default => File.basename(Dir.getwd, ".git"))
-if set_var('hipchat.redmineurl')
-  repo_url = "#{set_var('hipchat.redmineurl')}/projects/#{set_var('hipchat.project', :required => true)}/repository/#{repository}/"
-  commit_url = repo_url + 'revisions/'
-elsif set_var('hipchat.gitweburl')
-  repo_url = "#{set_var('hipchat.gitweburl')}/#{repository}.git/"
-  commit_url = repo_url + "commit/"
-elsif set_var('hipchat.cgiturl')
-  repo_url = "#{set_var('cgiturl')}/#{repository}/"
-  commit_url = repo_url + "commit/?id="
-else
-  repo_url = commit_url = nil
+def getUrl repo
+  if conf('redmineurl')
+    repo_url = "#{conf('redmineurl')}/projects/#{conf('project', :required => true)}/repository/#{repo}/"
+    commit_url = repo_url + 'revisions/%H'
+  elsif conf('gitweburl')
+    repo_url = "#{conf('gitweburl')}/#{repo}.git/"
+    commit_url = repo_url + "commit/%H"
+  elsif conf('cgiturl')
+    repo_url = "#{conf('cgiturl')}/#{repo}/"
+    commit_url = repo_url + "commit/?id=%H"
+  else
+    repo_url = commit_url = nil
+  end
+  {:repo => repo_url, :commit => commit_url}
 end
 
-git = `which git`.strip
+def commitMessage url
+  # get commit infos [oldRev, newRev, refHead]
+  info = STDIN.read.split(/\s+/)
+  msg = `$(which git) log #{info[0]}..#{info[1]} --reverse --format='%an authored <a href="#{url[:commit]}">%h</a> %ad%n<b>%s</b>%n%b'`
+  # remove last newline, nl2br
+  msg = msg.chomp.gsub("\r", '').gsub("\n", '<br>')
+  # replace redmine issue url
+  if conf('redmineurl')
+    msg.gsub(/#(\d+)/, '<a href="'+ conf('redmineurl') +'/issues/\1">\0</a>')
+  end
+end
 
 # Call to pre-speak hook
 load File.join(File.dirname(__FILE__), 'pre-speak') if File.exist?(File.join(File.dirname(__FILE__), 'pre-speak'))
 
-# Write in a file the timestamp of the last commit already posted to the room.
-filename = File.join(File.dirname(__FILE__), repository[/[\w.]+/] + ".log")
-if File.exist?(filename)
-  last_revision = Time.parse(File.open(filename) { |f| f.read.strip })
-else
-  # TODO: Skip error message if push includes first commit?
-  # Commenting out noisy error message for now
-  # room.speak("Warning: Couldn't find the previous push timestamp.")
-  last_revision = Time.now - 120
-end
+# get repo name
+repo = conf('repository', :default => File.basename(Dir.getwd, '.git'))
 
-revtime = last_revision.strftime("%Y %b %d %H:%M:%S %Z")
-File.open(filename, "w+") { |f| f.write Time.now.utc }
+# get repo/commit url
+url = getUrl repo
 
-commit_changes = `#{git} log --abbrev-commit --oneline --since='#{revtime}' --reverse`
-unless commit_changes.empty?
-  message = "Commits just pushed to "
-  if repo_url
-    message += "<a href=\"#{repo_url}\">"
-  end
-  message += repository
-  if repo_url
-    message += "</a>"
-  end
-  message += ":<br/>"
-
-  commit_changes.split("\n").each do |commit|
-    if commit.strip =~ /^([\da-z]+) (.*)/
-      if commit_url
-        message += "<a href=\"#{commit_url + $1}\">"
-      end
-      message += $1
-      if commit_url
-        message += "</a>"
-      end
-      message += " #{$2.split("\n").first}<br/>"
-    end
-  end
-  # check silent
-  unless set_var('hipchat.silent') == '1'
-    # add notify key check
-    speak message, (set_var('hipchat.notifykey') && $2.include?(set_var('hipchat.notifykey')))
-  end
+# speak
+unless conf('silent') == '1'
+  #puts "Commits just pushed to <a href=\"#{url[:repo]}\">#{repo}</a>:<br>" + commitMessage(url)
+  speak "Commits just pushed to <a href=\"#{url[:repo]}\">#{repo}</a>:<br>" + commitMessage(url)
 end
 
 # Call to post-speak hook
