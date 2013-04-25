@@ -77,7 +77,8 @@ end
 def commitMessage url
   # get commit infos [oldRev, newRev, refHead]
   info = STDIN.read.split(/\s+/)
-  msg = `$(which git) log #{info[0]}..#{info[1]} --reverse --format='%an authored <a href="#{url[:commit]}">%h</a> %ad%n<b>%s</b>%n%b'`
+  commitRange = info[0].match(/0+/) ? info[1] : "#{info[0]}..#{info[1]}"
+  msg = `$(which git) log #{commitRange} --reverse --format='%an authored <a href="#{url[:commit]}">%h</a> %ad%n<b>%s</b>%n%b'`
   # remove last newline, nl2br
   msg = msg.chomp.gsub("\r", '').gsub("\n", '<br>')
   # replace redmine issue url
