@@ -74,11 +74,16 @@ def getUrl repo
   {:repo => repo_url, :commit => commit_url}
 end
 
-def commitMessage url
+def commitMessage
+  # get repo name
+  repo = conf('repository', :default => File.basename(Dir.getwd, '.git'))
+  # get repo/commit url
+  url = getUrl repo
   # get commit infos [oldRev, newRev, refHead]
   info = STDIN.read.split(/\s+/)
-  commitRange = info[0].match(/0+/) ? info[1] : "#{info[0]}..#{info[1]}"
-  msg = `$(which git) log #{commitRange} --reverse --format='%an authored <a href="#{url[:commit]}">%h</a> %ad%n<b>%s</b>%n%b'`
+  commitRange = info[0].match(/^0+$/) ? info[1] : "#{info[0]}..#{info[1]}"
+  msg = "Commits just pushed to <a href=\"#{url[:repo]}\">#{repo}</a>:<br>" +
+      `$(which git) log #{commitRange} --reverse --format='%an authored <a href="#{url[:commit]}">%h</a> %ad%n<b>%s</b>%n%b'`
   # remove last newline, nl2br
   msg = msg.chomp.gsub("\r", '').gsub("\n", '<br>')
   # replace redmine issue url
@@ -90,16 +95,11 @@ end
 # Call to pre-speak hook
 load File.join(File.dirname(__FILE__), 'pre-speak') if File.exist?(File.join(File.dirname(__FILE__), 'pre-speak'))
 
-# get repo name
-repo = conf('repository', :default => File.basename(Dir.getwd, '.git'))
-
-# get repo/commit url
-url = getUrl repo
 
 # speak
 unless conf('silent') == '1'
-  #puts "Commits just pushed to <a href=\"#{url[:repo]}\">#{repo}</a>:<br>" + commitMessage(url)
-  speak "Commits just pushed to <a href=\"#{url[:repo]}\">#{repo}</a>:<br>" + commitMessage(url)
+  #puts commitMessage
+  speak commitMessage
 end
 
 # Call to post-speak hook
