@@ -74,14 +74,15 @@ def getUrl repo
   {:repo => repo_url, :commit => commit_url}
 end
 
+# get commit infos [oldRev, newRev, refHead]
+COMMIT_INFO = STDIN.read.split(/\s+/)
 def commitMessage
   # get repo name
   repo = conf('repository', :default => File.basename(Dir.getwd, '.git'))
   # get repo/commit url
   url = getUrl repo
   # get commit infos [oldRev, newRev, refHead]
-  info = STDIN.read.split(/\s+/)
-  commitRange = info[0].match(/^0+$/) ? info[1] : "#{info[0]}..#{info[1]}"
+  commitRange = COMMIT_INFO[0].match(/^0+$/) ? COMMIT_INFO[1] : "#{COMMIT_INFO[0]}..#{COMMIT_INFO[1]}"
   msg = "Commits just pushed to <a href=\"#{url[:repo]}\">#{repo}</a>:<br>" +
       `$(which git) log #{commitRange} --reverse --format='%an authored <a href="#{url[:commit]}">%h</a> %ad%n<b>%s</b>%n%b'`
   # remove last newline, nl2br
