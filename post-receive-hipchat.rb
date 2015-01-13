@@ -53,9 +53,14 @@ def speak(message)
     'notify' => conf('notify', :default => 0),
     'from' => conf('from', :default => 'Gitolite')
   })
-  http.request(request)
-  # put message let remote knowing this speak
-  puts "sent!"
+  res = http.request(request)
+  case res
+  when Net::HTTPSuccess then
+      # put message let remote knowing this speak
+      puts "sent!"
+  else
+      abort("error: "+res.code+" "+res.body)
+  end
 end
 
 def getUrl repo
