@@ -107,11 +107,16 @@ def commitMessage old_rev, new_rev, branch_name
   end
 end
 
-# Call to pre-speak hook
-load File.join(File.dirname(__FILE__), 'pre-speak') if File.exist?(File.join(File.dirname(__FILE__), 'pre-speak'))
 
 # get commit infos [oldRev, newRev, refHead]
 old_rev, new_rev, ref_head = STDIN.read.split(/\s+/)
+refmatch = conf('refmatch')
+if refmatch && !ref_head.match(refmatch)
+  exit
+end
+
+# Call to pre-speak hook
+load File.join(File.dirname(__FILE__), 'pre-speak') if File.exist?(File.join(File.dirname(__FILE__), 'pre-speak'))
 
 if ref_head.start_with?("refs/heads/")
   ref_head = ref_head[11..-1]
