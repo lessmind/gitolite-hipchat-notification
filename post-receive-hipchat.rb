@@ -3,6 +3,7 @@
 require 'yaml'
 require 'time'
 require 'net/https'
+require 'uri'
 
 # load configs from yml
 conffile = File.join(File.dirname(__FILE__), 'config.yml')
@@ -53,14 +54,20 @@ def speak(message)
     'notify' => conf('notify', :default => 0),
     'from' => conf('from', :default => 'Gitolite')
   })
-  http.request(request)
-  # put message let remote knowing this speak
-  puts "sent!"
+  res = http.request(request)
+  case res
+  when Net::HTTPSuccess then
+      # put message let remote knowing this speak
+      puts "sent!"
+  else
+      abort("error: "+res.code+" "+res.body)
+  end
 end
 
-def getUrl repo
+def getUrl repo, branch_name
   if conf('redmineurl')
-    repo_url = "#{conf('redmineurl')}/projects/#{conf('project', :required => true)}/repository/#{repo}/"
+    repo_url = "#{conf('redmineurl')}/projects/#{conf('project', :required => true)}/repository/#{repo}/" +
+      "?rev="+URI.encode_www_form_component(branch_name)
     commit_url = repo_url + 'revisions/%H'
   elsif conf('gitweburl')
     repo_url = "#{conf('gitweburl')}/#{repo}.git/"
@@ -74,33 +81,51 @@ def getUrl repo
   {:repo => repo_url, :commit => commit_url}
 end
 
-# get commit infos [oldRev, newRev, refHead]
-COMMIT_INFO = STDIN.read.split(/\s+/)
-def commitMessage
+def commitMessage old_rev, new_rev, branch_name
   # get repo name
   repo = conf('repository', :default => File.basename(Dir.getwd, '.git'))
   # get repo/commit url
-  url = getUrl repo
-  # get commit infos [oldRev, newRev, refHead]
-  commitRange = COMMIT_INFO[0].match(/^0+$/) ? COMMIT_INFO[1] : "#{COMMIT_INFO[0]}..#{COMMIT_INFO[1]}"
-  msg = "Commits just pushed to <a href=\"#{url[:repo]}\">#{repo}</a>:<br>" +
-      `$(which git) log #{commitRange} --reverse --format='%an authored <a href="#{url[:commit]}">%h</a> %ad%n<b>%s</b>%n%b'`
+  url = getUrl(repo, branch_name)
+
+  if old_rev.match(/^0+$/)
+    # new branch: just get the diffs from master
+    start_rev = "master"
+  else
+    start_rev = old_rev
+  end
+  commit_range = "#{start_rev}..#{new_rev}"
+  logs = `$(which git) log #{commit_range} --reverse --format='%an authored <a href="#{url[:commit]}">%h</a> %ad%n<b>%s</b>%n%b'`
+ 
+  msg = "Commits just pushed to <a href=\"#{url[:repo]}\">#{repo}:#{branch_name}</a>:<br>" + logs
+
   # remove last newline, nl2br
   msg = msg.chomp.gsub("\r", '').gsub("\n", '<br>')
+
   # replace redmine issue url
   if conf('redmineurl')
     msg.gsub(/#(\d+)/, '<a href="'+ conf('redmineurl') +'/issues/\1">\0</a>')
   end
 end
 
+
+# get commit infos [oldRev, newRev, refHead]
+old_rev, new_rev, ref_head = STDIN.read.split(/\s+/)
+refmatch = conf('refmatch')
+if refmatch && !ref_head.match(refmatch)
+  exit
+end
+
 # Call to pre-speak hook
 load File.join(File.dirname(__FILE__), 'pre-speak') if File.exist?(File.join(File.dirname(__FILE__), 'pre-speak'))
 
+if ref_head.start_with?("refs/heads/")
+  ref_head = ref_head[11..-1]
+end
 
 # speak
 unless conf('silent') == '1'
   #puts commitMessage
-  speak commitMessage
+  speak commitMessage(old_rev, new_rev, ref_head)
 end
 
 # Call to post-speak hook
